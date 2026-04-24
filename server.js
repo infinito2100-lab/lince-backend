@@ -2,6 +2,14 @@ const express = require("express");
 const fs = require("fs");
 const app = express();
 
+// ✅ SOLUCIÓN CORS
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  next();
+});
+
 app.use(express.json());
 
 app.post("/save-token", (req, res) => {
