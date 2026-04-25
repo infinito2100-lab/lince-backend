@@ -2,6 +2,7 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const admin = require("firebase-admin");
+const db = admin.firestore();
 
 const app = express();
 
