@@ -2,7 +2,7 @@ const express = require("express");
 const fs = require("fs");
 const app = express();
 
-// ✅ SOLUCIÓN CORS
+// CORS
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -12,6 +12,7 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+// SAVE TOKEN
 app.post("/save-token", (req, res) => {
   const token = req.body.token;
 
@@ -33,6 +34,9 @@ app.post("/save-token", (req, res) => {
   res.send("OK");
 });
 
-app.listen(3000, () => {
-  console.log("Backend listo en puerto 3000");
+// ✔️ FIX CRÍTICO PARA RENDER
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("Backend listo en puerto " + PORT);
 });
