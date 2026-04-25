@@ -66,13 +66,20 @@ async function iniciarNotificaciones() {
       console.log("📲 TOKEN:", token);
 
       // ✔ enviar al backend
-      fetch("https://lince-backend.onrender.com/save-token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ token })
-      });
+  fetch("https://lince-backend.onrender.com/save-token", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ token })
+})
+.then(res => res.text())
+.then(data => {
+  console.log("📡 RESPUESTA BACKEND:", data);
+})
+.catch(err => {
+  console.log("❌ ERROR EN FETCH:", err);
+});
 
     } else {
       console.log("❌ NO TOKEN GENERADO");
