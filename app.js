@@ -42,6 +42,27 @@ if ('serviceWorker' in navigator) {
     });
 }
 
+// 🔥 FUNCIÓN NUEVA ROBUSTA
+async function enviarToken(token) {
+  try {
+    const res = await fetch("https://lince-backend.onrender.com/save-token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ token })
+    });
+
+    const text = await res.text();
+
+    console.log("📡 STATUS:", res.status);
+    console.log("📡 RESPUESTA BACKEND:", text);
+
+  } catch (err) {
+    console.log("❌ ERROR FETCH:", err);
+  }
+}
+
 async function iniciarNotificaciones() {
   try {
     const permission = await Notification.requestPermission();
@@ -69,22 +90,8 @@ async function iniciarNotificaciones() {
     console.log("📲 TOKEN:", token);
     console.log("📤 ENVIANDO AL BACKEND...");
 
-    // ✔ fetch robusto
-    fetch("https://lince-backend.onrender.com/save-token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ token })
-    })
-    .then(async (res) => {
-      const text = await res.text();
-      console.log("📡 STATUS:", res.status);
-      console.log("📡 RESPUESTA BACKEND:", text);
-    })
-    .catch((err) => {
-      console.log("❌ ERROR FETCH:", err);
-    });
+    // ✔ USO CORRECTO
+    enviarToken(token);
 
   } catch (err) {
     console.log("❌ ERROR:", err);
