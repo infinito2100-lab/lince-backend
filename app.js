@@ -18,9 +18,9 @@ const app = initializeApp(firebaseConfig);
 
 console.log("APP.JS CARGADO");
 
-let messaging;
+let messaging = null;
 
-// ✔ SOLO INICIALIZA SI ES COMPATIBLE (FIX IMPORTANTE)
+// ✔ compatibilidad segura
 isSupported().then((supported) => {
   if (!supported) {
     console.log("❌ Firebase Messaging no soportado");
@@ -28,11 +28,10 @@ isSupported().then((supported) => {
   }
 
   messaging = getMessaging(app);
-
   iniciarNotificaciones();
 });
 
-// ✔ REGISTRO SERVICE WORKER
+// ✔ service worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/firebase-messaging-sw.js')
     .then((registration) => {
@@ -59,38 +58,40 @@ async function iniciarNotificaciones() {
       serviceWorkerRegistration: registration
     });
 
-    if (token) {
-      localStorage.setItem("fcm_token", token);
-      window.token = token;
-
-      console.log("📲 TOKEN:", token);
-
-      // ✔ enviar al backend
-  fetch("https://lince-backend.onrender.com/save-token", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({ token })
-})
-.then(res => res.text())
-.then(data => {
-  console.log("📡 RESPUESTA BACKEND:", data);
-})
-.catch(err => {
-  console.log("❌ ERROR EN FETCH:", err);
-});
-
-    } else {
+    if (!token) {
       console.log("❌ NO TOKEN GENERADO");
+      return;
     }
+
+    localStorage.setItem("fcm_token", token);
+    window.token = token;
+
+    console.log("📲 TOKEN:", token);
+    console.log("📤 ENVIANDO AL BACKEND...");
+
+    // ✔ fetch robusto
+    fetch("https://lince-backend.onrender.com/save-token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ token })
+    })
+    .then(async (res) => {
+      const text = await res.text();
+      console.log("📡 STATUS:", res.status);
+      console.log("📡 RESPUESTA BACKEND:", text);
+    })
+    .catch((err) => {
+      console.log("❌ ERROR FETCH:", err);
+    });
 
   } catch (err) {
     console.log("❌ ERROR:", err);
   }
 }
 
-// ✔ recibir mensajes en primer plano
+// ✔ mensajes en primer plano
 if (messaging) {
   onMessage(messaging, (payload) => {
     console.log("📩 Mensaje recibido:", payload);
