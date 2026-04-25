@@ -1,6 +1,7 @@
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
+const admin = require("firebase-admin");
 
 const app = express();
 
@@ -13,6 +14,13 @@ app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   next();
+});
+
+// 🔥 FIREBASE ADMIN (AGREGADO)
+const serviceAccount = require("./serviceAccountKey.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
 });
 
 // 📁 ruta segura
@@ -59,8 +67,7 @@ app.get("/tokens", (req, res) => {
   res.json(tokens);
 });
 
-
-// 🧹 NUEVO: UPDATE TOKENS (limpieza automática)
+// 🧹 UPDATE TOKENS
 app.post("/update-tokens", (req, res) => {
   const tokens = req.body?.tokens;
 
@@ -71,19 +78,50 @@ app.post("/update-tokens", (req, res) => {
 
   fs.writeFileSync(TOKEN_FILE, tokens.join("\n"));
 
-  console.log("🧹 Tokens actualizados desde send.cjs");
+  console.log("🧹 Tokens actualizados");
   console.log("📊 Nuevos tokens:", tokens.length);
 
   res.send("OK");
 });
 
+// 🔔 ENVIAR NOTIFICACIÓN A UN TOKEN (AGREGADO)
+app.get("/send", async (req, res) => {
+  let tokens = [];
+
+  if (fs.existsSync(TOKEN_FILE)) {
+    tokens = fs.readFileSync(TOKEN_FILE, "utf8")
+      .split("\n")
+      .filter(Boolean);
+  }
+
+  if (tokens.length === 0) {
+    return res.send("❌ No hay tokens");
+  }
+
+  const message = {
+    notification: {
+      title: "Prueba",
+      body: "Hola desde backend"
+    },
+    token: tokens[0] // usa el primer token
+  };
+
+  try {
+    const response = await admin.messaging().send(message);
+    console.log("✅ Enviado:", response);
+    res.send(response);
+  } catch (error) {
+    console.log("❌ Error:", error);
+    res.send(error);
+  }
+});
 
 // 🔹 CHECK SERVER
 app.get("/", (req, res) => {
   res.json({
     status: "ok",
     message: "Backend activo",
-    routes: ["/save-token", "/tokens", "/update-tokens"]
+    routes: ["/save-token", "/tokens", "/update-tokens", "/send"]
   });
 });
 
