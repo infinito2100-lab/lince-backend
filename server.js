@@ -1,6 +1,10 @@
 const express = require("express");
 const fs = require("fs");
 const app = express();
+const path = require("path");
+
+// ✔️ IMPORTANTE: JSON body primero
+app.use(express.json());
 
 // CORS
 app.use((req, res, next) => {
@@ -10,31 +14,37 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
+// 📁 ruta segura para tokens.txt (Render-friendly)
+const TOKEN_FILE = path.join(__dirname, "tokens.txt");
 
 // SAVE TOKEN
 app.post("/save-token", (req, res) => {
-  const token = req.body.token;
+  const token = req.body?.token; // ✔️ FIX CRÍTICO
 
-  if (!token) return res.sendStatus(400);
+  if (!token) {
+    console.log("❌ Token vacío o no recibido");
+    return res.status(400).send("NO TOKEN");
+  }
 
   let tokens = [];
 
-  if (fs.existsSync("tokens.txt")) {
-    tokens = fs.readFileSync("tokens.txt", "utf8")
+  if (fs.existsSync(TOKEN_FILE)) {
+    tokens = fs.readFileSync(TOKEN_FILE, "utf8")
       .split("\n")
       .filter(Boolean);
   }
 
   if (!tokens.includes(token)) {
     tokens.push(token);
-    fs.writeFileSync("tokens.txt", tokens.join("\n"));
+    fs.writeFileSync(TOKEN_FILE, tokens.join("\n"));
   }
+
+  console.log("📥 Token guardado:", token);
 
   res.send("OK");
 });
 
-// ✔️ FIX CRÍTICO PARA RENDER
+// PORT Render
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
