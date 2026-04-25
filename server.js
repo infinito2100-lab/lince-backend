@@ -16,8 +16,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🔥 FIREBASE ADMIN (AGREGADO)
-const serviceAccount = require("./serviceAccountKey.json");
+// 🔥 FIREBASE ADMIN (CORREGIDO)
+// ❌ antes: require("./serviceAccountKey.json")
+const serviceAccount = JSON.parse(process.env["Firebase service account"]);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -84,7 +85,7 @@ app.post("/update-tokens", (req, res) => {
   res.send("OK");
 });
 
-// 🔔 ENVIAR NOTIFICACIÓN A UN TOKEN (AGREGADO)
+// 🔔 ENVIAR NOTIFICACIÓN
 app.get("/send", async (req, res) => {
   let tokens = [];
 
@@ -103,7 +104,7 @@ app.get("/send", async (req, res) => {
       title: "Prueba",
       body: "Hola desde backend"
     },
-    token: tokens[0] // usa el primer token
+    token: tokens[0]
   };
 
   try {
