@@ -1,7 +1,8 @@
 const express = require("express");
 const fs = require("fs");
-const app = express();
 const path = require("path");
+
+const app = express();
 
 // ✔️ JSON primero
 app.use(express.json());
@@ -17,7 +18,7 @@ app.use((req, res, next) => {
 // 📁 ruta segura
 const TOKEN_FILE = path.join(__dirname, "tokens.txt");
 
-// SAVE TOKEN
+// 🔹 SAVE TOKEN
 app.post("/save-token", (req, res) => {
   const token = req.body?.token;
 
@@ -40,7 +41,31 @@ app.post("/save-token", (req, res) => {
   }
 
   console.log("📥 Token guardado:", token);
+  console.log("📊 Total tokens:", tokens.length);
+
   res.send("OK");
+});
+
+// 🔹 VER TOKENS
+app.get("/tokens", (req, res) => {
+  let tokens = [];
+
+  if (fs.existsSync(TOKEN_FILE)) {
+    tokens = fs.readFileSync(TOKEN_FILE, "utf8")
+      .split("\n")
+      .filter(Boolean);
+  }
+
+  res.json(tokens);
+});
+
+// 🔹 CHECK SERVER
+app.get("/", (req, res) => {
+  res.json({
+    status: "ok",
+    message: "Backend activo",
+    routes: ["/save-token", "/tokens"]
+  });
 });
 
 // PORT Render
