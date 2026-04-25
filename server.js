@@ -1,12 +1,9 @@
 const express = require("express");
-const fs = require("fs");
-const path = require("path");
 const admin = require("firebase-admin");
-const db = admin.firestore();
 
 const app = express();
 
-// ✔️ JSON primero
+// JSON
 app.use(express.json());
 
 // CORS
@@ -18,7 +15,7 @@ app.use((req, res, next) => {
 });
 
 
-// 🔥 FIREBASE ADMIN (CORREGIDO Y SEGURO)
+// 🔥 FIREBASE INIT
 if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
   throw new Error("❌ Falta FIREBASE_SERVICE_ACCOUNT en Render");
 }
@@ -29,98 +26,71 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 
-
-// 📁 ruta segura
-const TOKEN_FILE = path.join(__dirname, "tokens.txt");
+// 🔥 FIRESTORE
+const db = admin.firestore();
 
 
 // 🔹 SAVE TOKEN
-app.post("/save-token", (req, res) => {
+app.post("/save-token", async (req, res) => {
   const token = req.body?.token;
 
   if (!token) {
-    console.log("❌ Token vacío o no recibido");
     return res.status(400).send("NO TOKEN");
   }
 
-  let tokens = [];
+  try {
+    await db.collection("tokens").doc(token).set({
+      token,
+      createdAt: new Date()
+    });
 
-  if (fs.existsSync(TOKEN_FILE)) {
-    tokens = fs.readFileSync(TOKEN_FILE, "utf8")
-      .split("\n")
-      .filter(Boolean);
+    console.log("📥 Token guardado:", token);
+    res.send("OK");
+
+  } catch (error) {
+    console.log("❌ Error guardando token:", error);
+    res.status(500).send("ERROR");
   }
-
-  if (!tokens.includes(token)) {
-    tokens.push(token);
-    fs.writeFileSync(TOKEN_FILE, tokens.join("\n"));
-  }
-
-  console.log("📥 Token guardado:", token);
-  console.log("📊 Total tokens:", tokens.length);
-
-  res.send("OK");
 });
 
 
 // 🔹 VER TOKENS
-app.get("/tokens", (req, res) => {
-  let tokens = [];
+app.get("/tokens", async (req, res) => {
+  try {
+    const snapshot = await db.collection("tokens").get();
+    const tokens = snapshot.docs.map(doc => doc.id);
 
-  if (fs.existsSync(TOKEN_FILE)) {
-    tokens = fs.readFileSync(TOKEN_FILE, "utf8")
-      .split("\n")
-      .filter(Boolean);
+    res.json(tokens);
+
+  } catch (error) {
+    res.status(500).send("ERROR");
   }
-
-  res.json(tokens);
-});
-
-
-// 🧹 UPDATE TOKENS
-app.post("/update-tokens", (req, res) => {
-  const tokens = req.body?.tokens;
-
-  if (!tokens) {
-    console.log("❌ No llegaron tokens para actualizar");
-    return res.status(400).send("NO TOKENS");
-  }
-
-  fs.writeFileSync(TOKEN_FILE, tokens.join("\n"));
-
-  console.log("🧹 Tokens actualizados");
-  console.log("📊 Nuevos tokens:", tokens.length);
-
-  res.send("OK");
 });
 
 
 // 🔔 ENVIAR NOTIFICACIÓN
 app.get("/send", async (req, res) => {
-  let tokens = [];
-
-  if (fs.existsSync(TOKEN_FILE)) {
-    tokens = fs.readFileSync(TOKEN_FILE, "utf8")
-      .split("\n")
-      .filter(Boolean);
-  }
-
-  if (tokens.length === 0) {
-    return res.send("❌ No hay tokens");
-  }
-
-  const message = {
-    notification: {
-      title: "Prueba",
-      body: "Hola desde backend"
-    },
-    token: tokens[0]
-  };
-
   try {
+    const snapshot = await db.collection("tokens").get();
+    const tokens = snapshot.docs.map(doc => doc.id);
+
+    if (tokens.length === 0) {
+      return res.send("❌ No hay tokens");
+    }
+
+    const message = {
+      notification: {
+        title: "Prueba",
+        body: "Hola desde backend"
+      },
+      token: tokens[0]
+    };
+
     const response = await admin.messaging().send(message);
+
     console.log("✅ Enviado:", response);
     res.send(response);
+
   } catch (error) {
     console.log("❌ Error:", error);
     res.status(500).send(error.message);
@@ -128,17 +98,17 @@ app.get("/send", async (req, res) => {
 });
 
 
-// 🔹 CHECK SERVER
+// HOME
 app.get("/", (req, res) => {
   res.json({
     status: "ok",
     message: "Backend activo",
-    routes: ["/save-token", "/tokens", "/update-tokens", "/send"]
+    routes: ["/save-token", "/tokens", "/send"]
   });
 });
 
 
-// PORT Render
+// PORT
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
