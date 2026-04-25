@@ -26,7 +26,7 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 
-// 🔥 FIRESTORE
+// Firestore
 const db = admin.firestore();
 
 
@@ -41,7 +41,7 @@ app.post("/save-token", async (req, res) => {
   try {
     await db.collection("tokens").doc(token).set({
       token,
-      createdAt: new Date()
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
     console.log("📥 Token guardado:", token);
@@ -68,7 +68,7 @@ app.get("/tokens", async (req, res) => {
 });
 
 
-// 🔔 ENVIAR NOTIFICACIÓN
+// 🔔 ENVIAR NOTIFICACIÓN A TODOS
 app.get("/send", async (req, res) => {
   try {
     const snapshot = await db.collection("tokens").get();
@@ -83,13 +83,18 @@ app.get("/send", async (req, res) => {
         title: "Prueba",
         body: "Hola desde backend"
       },
-      token: tokens[0]
+      tokens: tokens
     };
 
-    const response = await admin.messaging().send(message);
+    const response = await admin.messaging().sendEachForMulticast(message);
 
-    console.log("✅ Enviado:", response);
-    res.send(response);
+    console.log("📨 Enviados:", response.successCount);
+    console.log("❌ Fallos:", response.failureCount);
+
+    res.json({
+      success: response.successCount,
+      failure: response.failureCount
+    });
 
   } catch (error) {
     console.log("❌ Error:", error);
