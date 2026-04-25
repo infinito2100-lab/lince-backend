@@ -3,7 +3,7 @@ const fs = require("fs");
 const app = express();
 const path = require("path");
 
-// ✔️ IMPORTANTE: JSON body primero
+// ✔️ JSON primero
 app.use(express.json());
 
 // CORS
@@ -14,12 +14,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// 📁 ruta segura para tokens.txt (Render-friendly)
+// 📁 ruta segura
 const TOKEN_FILE = path.join(__dirname, "tokens.txt");
 
 // SAVE TOKEN
 app.post("/save-token", (req, res) => {
-  const token = req.body?.token; // ✔️ FIX CRÍTICO
+  const token = req.body?.token;
 
   if (!token) {
     console.log("❌ Token vacío o no recibido");
@@ -40,7 +40,6 @@ app.post("/save-token", (req, res) => {
   }
 
   console.log("📥 Token guardado:", token);
-
   res.send("OK");
 });
 
