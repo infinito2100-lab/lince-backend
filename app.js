@@ -91,7 +91,9 @@ async function iniciarNotificaciones() {
     console.log("📤 ENVIANDO AL BACKEND...");
 
     // ✔ USO CORRECTO
-    enviarToken(token);
+    setTimeout(() => {
+  enviarToken(token);
+}, 2000);
 
   } catch (err) {
     console.log("❌ ERROR:", err);
