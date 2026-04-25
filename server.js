@@ -16,16 +16,22 @@ app.use((req, res, next) => {
   next();
 });
 
-// 🔥 FIREBASE ADMIN (CORREGIDO)
-// ❌ antes: require("./serviceAccountKey.json")
-const serviceAccount = JSON.parse(process.env["Firebase service account"]);
+
+// 🔥 FIREBASE ADMIN (CORREGIDO Y SEGURO)
+if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+  throw new Error("❌ Falta FIREBASE_SERVICE_ACCOUNT en Render");
+}
+
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
 
+
 // 📁 ruta segura
 const TOKEN_FILE = path.join(__dirname, "tokens.txt");
+
 
 // 🔹 SAVE TOKEN
 app.post("/save-token", (req, res) => {
@@ -55,6 +61,7 @@ app.post("/save-token", (req, res) => {
   res.send("OK");
 });
 
+
 // 🔹 VER TOKENS
 app.get("/tokens", (req, res) => {
   let tokens = [];
@@ -67,6 +74,7 @@ app.get("/tokens", (req, res) => {
 
   res.json(tokens);
 });
+
 
 // 🧹 UPDATE TOKENS
 app.post("/update-tokens", (req, res) => {
@@ -84,6 +92,7 @@ app.post("/update-tokens", (req, res) => {
 
   res.send("OK");
 });
+
 
 // 🔔 ENVIAR NOTIFICACIÓN
 app.get("/send", async (req, res) => {
@@ -113,9 +122,10 @@ app.get("/send", async (req, res) => {
     res.send(response);
   } catch (error) {
     console.log("❌ Error:", error);
-    res.send(error);
+    res.status(500).send(error.message);
   }
 });
+
 
 // 🔹 CHECK SERVER
 app.get("/", (req, res) => {
@@ -125,6 +135,7 @@ app.get("/", (req, res) => {
     routes: ["/save-token", "/tokens", "/update-tokens", "/send"]
   });
 });
+
 
 // PORT Render
 const PORT = process.env.PORT || 3000;
