@@ -59,12 +59,31 @@ app.get("/tokens", (req, res) => {
   res.json(tokens);
 });
 
+
+// 🧹 NUEVO: UPDATE TOKENS (limpieza automática)
+app.post("/update-tokens", (req, res) => {
+  const tokens = req.body?.tokens;
+
+  if (!tokens) {
+    console.log("❌ No llegaron tokens para actualizar");
+    return res.status(400).send("NO TOKENS");
+  }
+
+  fs.writeFileSync(TOKEN_FILE, tokens.join("\n"));
+
+  console.log("🧹 Tokens actualizados desde send.cjs");
+  console.log("📊 Nuevos tokens:", tokens.length);
+
+  res.send("OK");
+});
+
+
 // 🔹 CHECK SERVER
 app.get("/", (req, res) => {
   res.json({
     status: "ok",
     message: "Backend activo",
-    routes: ["/save-token", "/tokens"]
+    routes: ["/save-token", "/tokens", "/update-tokens"]
   });
 });
 
