@@ -1,7 +1,11 @@
+require("dotenv").config();
+
 const express = require("express");
 const admin = require("firebase-admin");
 
 const app = express();
+
+console.log("FIREBASE:", process.env.FIREBASE_SERVICE_ACCOUNT ? "OK" : "MISSING");
 
 app.use(express.json());
 
@@ -54,9 +58,26 @@ app.get("/tokens", async (req, res) => {
 });
 
 
-// 🔔 SEND NOTIFICATION (FIXED)
+// 🔔 SEND NOTIFICATION (CORREGIDO)
 app.post("/send", async (req, res) => {
   try {
+    const { token, title, body } = req.body;
+
+    // 👉 enviar a un solo usuario
+    if (token) {
+      const message = {
+        notification: {
+          title: title,
+          body: body
+        },
+        token: token
+      };
+
+      const response = await admin.messaging().send(message);
+      return res.json({ success: true, response });
+    }
+
+    // 👉 enviar a todos
     const snapshot = await db.collection("tokens").get();
     const tokens = snapshot.docs.map(doc => doc.id);
 
@@ -66,8 +87,8 @@ app.post("/send", async (req, res) => {
 
     const message = {
       notification: {
-        title: "Prueba",
-        body: "Hola desde backend"
+        title: title || "Mensaje",
+        body: body || "Sin contenido"
       },
       tokens: tokens
     };
