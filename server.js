@@ -261,9 +261,9 @@ app.post("/send", async (req, res) => {
 
     }
 
-    console.log(
-      `✅ Enviadas: ${successCount} | ❌ Fallidas: ${failureCount}`
-    );
+console.log(
+  "Enviadas: " + successCount + " | Fallidas: " + failureCount
+);
 
     res.json({
 
