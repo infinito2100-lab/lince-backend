@@ -1,3 +1,4 @@
+```javascript
 require("dotenv").config();
 
 const express = require("express");
@@ -5,11 +6,8 @@ const admin = require("firebase-admin");
 
 const app = express();
 
-console.log("FIREBASE:", process.env.FIREBASE_SERVICE_ACCOUNT ? "OK" : "MISSING");
-
 app.use(express.json());
 
-// CORS
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -17,12 +15,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// FIREBASE INIT
+// =========================
+// FIREBASE
+// =========================
+
 if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
   throw new Error("❌ Falta FIREBASE_SERVICE_ACCOUNT en Render");
 }
 
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+const serviceAccount =
+  JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -31,89 +33,295 @@ admin.initializeApp({
 const db = admin.firestore();
 
 
-// SAVE TOKEN
+// =========================
+// GUARDAR TOKEN
+// =========================
+
 app.post("/save-token", async (req, res) => {
+
   const token = req.body?.token;
 
-  if (!token) return res.status(400).send("NO TOKEN");
+  if (!token) {
+    return res.status(400).send("NO TOKEN");
+  }
 
   try {
+
     await db.collection("tokens").doc(token).set({
-      token,
+      token: token,
       createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
+    console.log("✅ Token guardado");
+
     res.send("OK");
-  } catch (err) {
+
+  } catch (error) {
+
+    console.error("❌ Error guardando token:", error);
+
     res.status(500).send("ERROR");
+
   }
+
 });
 
 
-// GET TOKENS
+// =========================
+// VER TOKENS
+// =========================
+
 app.get("/tokens", async (req, res) => {
-  const snapshot = await db.collection("tokens").get();
-  const tokens = snapshot.docs.map(doc => doc.id);
-  res.json(tokens);
+
+  try {
+
+    const snapshot =
+      await db.collection("tokens").get();
+
+    const tokens =
+      snapshot.docs.map(doc => doc.id);
+
+    res.json(tokens);
+
+  } catch (error) {
+
+    console.error(error);
+
+    res.status(500).send(error.message);
+
+  }
+
 });
 
 
-// 🔔 SEND NOTIFICATION (CORREGIDO)
-app.post("/send", async (req, res) => {
-  try {
-    const { token, title, body } = req.body;
+// =========================
+// ENVIAR NOTIFICACIÓN
+// =========================
 
-    // 👉 enviar a un solo usuario
+app.post("/send", async (req, res) => {
+
+  try {
+
+    const {
+      token,
+      title,
+      body
+    } = req.body;
+
+    const titulo =
+      title || "🚨 LINCE247";
+
+    const contenido =
+      body || "Nueva alerta";
+
+
+// =========================
+// ENVIAR A UN SOLO CELULAR
+// =========================
+
     if (token) {
+
       const message = {
+
         notification: {
-          title: title,
-          body: body
+          title: titulo,
+          body: contenido
         },
+
+        data: {
+          title: titulo,
+          body: contenido,
+          url: "https://lince247.com/"
+        },
+
+        android: {
+
+          priority: "high",
+
+          notification: {
+            sound: "default",
+            channelId: "lince247_alertas",
+            defaultSound: true,
+            defaultVibrateTimings: true
+          }
+
+        },
+
+        webpush: {
+
+          headers: {
+            Urgency: "high"
+          },
+
+          notification: {
+            title: titulo,
+            body: contenido,
+            icon: "https://lince247.com/lince2-192.png",
+            badge: "https://lince247.com/lince2-192.png"
+          }
+
+        },
+
         token: token
+
       };
 
-      const response = await admin.messaging().send(message);
-      return res.json({ success: true, response });
+      const response =
+        await admin.messaging().send(message);
+
+      console.log("✅ Notificación enviada:", response);
+
+      return res.json({
+        success: true,
+        response: response
+      });
+
     }
 
-    // 👉 enviar a todos
-    const snapshot = await db.collection("tokens").get();
-    const tokens = snapshot.docs.map(doc => doc.id);
+
+// =========================
+// ENVIAR A TODOS
+// =========================
+
+    const snapshot =
+      await db.collection("tokens").get();
+
+    const tokens =
+      snapshot.docs.map(doc => doc.id);
 
     if (tokens.length === 0) {
+
       return res.send("❌ No hay tokens");
+
     }
 
-    const message = {
-      notification: {
-        title: title || "Mensaje",
-        body: body || "Sin contenido"
-      },
-      tokens: tokens
-    };
 
-    const response = await admin.messaging().sendEachForMulticast(message);
+// Firebase permite máximo 500 tokens por multicast.
+// Los enviamos en grupos de 500.
+
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (let i = 0; i < tokens.length; i += 500) {
+
+      const grupo =
+        tokens.slice(i, i + 500);
+
+      const message = {
+
+        notification: {
+          title: titulo,
+          body: contenido
+        },
+
+        data: {
+          title: titulo,
+          body: contenido,
+          url: "https://lince247.com/"
+        },
+
+        android: {
+
+          priority: "high",
+
+          notification: {
+            sound: "default",
+            channelId: "lince247_alertas",
+            defaultSound: true,
+            defaultVibrateTimings: true
+          }
+
+        },
+
+        webpush: {
+
+          headers: {
+            Urgency: "high"
+          },
+
+          notification: {
+            title: titulo,
+            body: contenido,
+            icon: "https://lince247.com/lince2-192.png",
+            badge: "https://lince247.com/lince2-192.png"
+          }
+
+        },
+
+        tokens: grupo
+
+      };
+
+      const response =
+        await admin.messaging()
+          .sendEachForMulticast(message);
+
+      successCount += response.successCount;
+      failureCount += response.failureCount;
+
+    }
+
+    console.log(
+      `✅ Enviadas: ${successCount} | ❌ Fallidas: ${failureCount}`
+    );
 
     res.json({
-      success: response.successCount,
-      failure: response.failureCount
+
+      success: successCount,
+
+      failure: failureCount
+
     });
 
   } catch (error) {
+
+    console.error(
+      "❌ Error enviando notificación:",
+      error
+    );
+
     res.status(500).send(error.message);
+
   }
+
 });
 
 
+// =========================
 // HOME
+// =========================
+
 app.get("/", (req, res) => {
+
   res.json({
+
     status: "ok",
-    message: "Backend activo",
-    routes: ["/save-token", "/tokens", "/send"]
+
+    message: "Backend Lince247 activo",
+
+    routes: [
+      "/save-token",
+      "/tokens",
+      "/send"
+    ]
+
   });
+
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Backend listo en puerto " + PORT));
+
+// =========================
+// SERVIDOR
+// =========================
+
+const PORT =
+  process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+
+  console.log(
+    "🚀 Backend Lince247 listo en puerto " + PORT
+  );
+
+});
+```
