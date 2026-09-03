@@ -101,17 +101,20 @@ app.post("/send", async (req, res) => {
 
   try {
 
-    const {
-      token,
-      title,
-      body
-    } = req.body;
+const {
+  token,
+  title,
+  body,
+  tipo
+} = req.body;
 
     const titulo =
       title || "🚨 LINCE247";
+const contenido =
+  body || "Nueva alerta";
 
-    const contenido =
-      body || "Nueva alerta";
+const esAlertaAdmin = tipo === "admin";
+
 
 
 // =========================
@@ -133,18 +136,18 @@ app.post("/send", async (req, res) => {
           url: "https://lince247.com/"
         },
 
-        android: {
+  android: {
 
-          priority: "high",
+  priority: "high",
 
-          notification: {
-            sound: "default",
-            channelId: "lince247_alertas",
-            defaultSound: true,
-            defaultVibrateTimings: true
-          }
+  notification: {
+    sound: esAlertaAdmin ? "default" : null,
+    channelId: esAlertaAdmin ? "lince247_alertas" : "lince247_silencioso",
+    defaultSound: esAlertaAdmin,
+    defaultVibrateTimings: esAlertaAdmin
+  }
 
-        },
+},
 
         webpush: {
 
@@ -219,18 +222,18 @@ app.post("/send", async (req, res) => {
           url: "https://lince247.com/"
         },
 
-        android: {
+  android: {
 
-          priority: "high",
+  priority: "high",
 
-          notification: {
-            sound: "default",
-            channelId: "lince247_alertas",
-            defaultSound: true,
-            defaultVibrateTimings: true
-          }
+  notification: {
+    sound: esAlertaAdmin ? "default" : null,
+    channelId: esAlertaAdmin ? "lince247_alertas" : "lince247_silencioso",
+    defaultSound: esAlertaAdmin,
+    defaultVibrateTimings: esAlertaAdmin
+  }
 
-        },
+},
 
         webpush: {
 
