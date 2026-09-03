@@ -258,6 +258,23 @@ const esAlertaAdmin = tipo === "admin";
         await admin.messaging()
           .sendEachForMulticast(message);
 
+      response.responses.forEach((r, index) => {
+
+  if (!r.success) {
+
+    console.error(
+      "❌ Token rechazado:",
+      grupo[index],
+      "| Código:",
+      r.error?.code,
+      "| Mensaje:",
+      r.error?.message
+    );
+
+  }
+
+});
+
       successCount += response.successCount;
       failureCount += response.failureCount;
 
