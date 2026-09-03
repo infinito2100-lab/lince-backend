@@ -125,10 +125,7 @@ const esAlertaAdmin = tipo === "admin";
 
       const message = {
 
-        notification: {
-          title: titulo,
-          body: contenido
-        },
+      
 
         data: {
           title: titulo,
