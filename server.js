@@ -558,13 +558,7 @@ app.get("/", (req, res) => {
 
     message: "Backend Lince247 activo",
 
-   routes: [
-  "/save-token",
-  "/tokens",
-  "/send",
-  "/save-admin-token",
-  "/notify-new-user"
-]
+routes: ["/save-token", "/tokens", "/send", "/save-admin-token", "/set-admin-sound", "/notify-new-user"]
 
   });
 
