@@ -173,6 +173,7 @@ app.post("/set-admin-sound", async (req, res) => {
 
 });
 
+
 // =========================
 // NOTIFICAR NUEVO USUARIO AL ADMINISTRADOR
 // =========================
@@ -187,16 +188,12 @@ app.post("/notify-new-user", async (req, res) => {
       return res.status(400).json({ error: "Falta el ID del usuario." });
     }
 
-    // Comprobar que el usuario realmente existe en Firestore.
-
     const usuarioRef = db.collection("usuarios125").doc(usuarioId);
     const usuarioDoc = await usuarioRef.get();
 
     if (!usuarioDoc.exists) {
       return res.status(404).json({ error: "El usuario no existe." });
     }
-
-    // Evitar notificar dos veces por el mismo registro.
 
     const avisoRef = db.collection("adminNotifiedUsers").doc(usuarioId);
     const avisoDoc = await avisoRef.get();
@@ -209,14 +206,11 @@ app.post("/notify-new-user", async (req, res) => {
     }
 
     const datosUsuario = usuarioDoc.data();
-
     const nombre = datosUsuario.nombre || "Nuevo usuario";
 
     const snapshot = await db.collection("adminTokens").get();
 
-    const tokens = snapshot.docs.map(doc => doc.id);
-
-    if (tokens.length === 0) {
+    if (snapshot.empty) {
       return res.status(404).json({
         error: "No hay dispositivos administradores registrados."
       });
@@ -225,26 +219,34 @@ app.post("/notify-new-user", async (req, res) => {
     let successCount = 0;
     let failureCount = 0;
 
-    for (let i = 0; i < tokens.length; i += 500) {
+    for (const dispositivo of snapshot.docs) {
 
-      const grupo = tokens.slice(i, i + 500);
+      const token = dispositivo.id;
+      const sonido = dispositivo.data().sonido !== false;
 
       const mensaje = {
         data: {
           title: "🔔 LINCE247",
           body: "Nuevo usuario registrado: " + nombre,
           url: "https://lince247.com/admin125.html",
-          tipo: "nuevo_usuario"
+          tipo: "nuevo_usuario",
+          silent: sonido ? "false" : "true"
         },
 
         android: {
           priority: "high",
-          notification: {
-            sound: "default",
-            channelId: "lince247_alertas",
-            defaultSound: true,
-            defaultVibrateTimings: true
-          }
+          notification: sonido
+            ? {
+                sound: "default",
+                channelId: "lince247_alertas",
+                defaultSound: true,
+                defaultVibrateTimings: true
+              }
+            : {
+                channelId: "lince247_silencioso",
+                defaultSound: false,
+                defaultVibrateTimings: false
+              }
         },
 
         webpush: {
@@ -253,14 +255,20 @@ app.post("/notify-new-user", async (req, res) => {
           }
         },
 
-        tokens: grupo
+        token: token
       };
 
-      const respuesta = await admin.messaging()
-        .sendEachForMulticast(mensaje);
+      try {
 
-      successCount += respuesta.successCount;
-      failureCount += respuesta.failureCount;
+        await admin.messaging().send(mensaje);
+        successCount++;
+
+      } catch (error) {
+
+        failureCount++;
+        console.error("Error enviando a dispositivo admin:", error.message);
+
+      }
 
     }
 
@@ -297,6 +305,7 @@ app.post("/notify-new-user", async (req, res) => {
   }
 
 });
+
 
 // =========================
 // VER TOKENS
