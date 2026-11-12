@@ -120,6 +120,55 @@ await db.collection("adminTokens").doc(token).set({
 
 });
 
+// =========================
+// CAMBIAR SONIDO DEL ADMINISTRADOR
+// =========================
+
+app.post("/set-admin-sound", async (req, res) => {
+
+  try {
+
+    const { token, sonido } = req.body;
+    const autorizacion = req.headers.authorization || "";
+
+    if (!token || typeof sonido !== "boolean") {
+      return res.status(400).json({ error: "Datos incompletos." });
+    }
+
+    if (!autorizacion.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "No autorizado." });
+    }
+
+    const idToken = autorizacion.split("Bearer ")[1];
+    const usuario = await admin.auth().verifyIdToken(idToken);
+
+    const email = (usuario.email || "").toLowerCase();
+
+    if (!administradores.includes(email)) {
+      return res.status(403).json({ error: "No eres administrador." });
+    }
+
+    const dispositivo = await db.collection("adminTokens").doc(token).get();
+
+    if (!dispositivo.exists || dispositivo.data().email !== email) {
+      return res.status(404).json({ error: "Dispositivo no encontrado." });
+    }
+
+    await dispositivo.ref.update({
+      sonido: sonido
+    });
+
+    res.json({ success: true, sonido: sonido });
+
+  } catch (error) {
+
+    console.error("Error cambiando sonido:", error);
+
+    res.status(500).json({ error: error.message });
+
+  }
+
+});
 
 // =========================
 // NOTIFICAR NUEVO USUARIO AL ADMINISTRADOR
