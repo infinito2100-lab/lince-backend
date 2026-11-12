@@ -102,7 +102,6 @@ app.post("/save-admin-token", async (req, res) => {
 await db.collection("adminTokens").doc(token).set({
   token: token,
   email: email,
-  sonido: true,
   createdAt: admin.firestore.FieldValue.serverTimestamp()
 }, { merge: true });
 
