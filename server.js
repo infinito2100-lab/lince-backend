@@ -111,7 +111,9 @@ await referenciaToken.set({
 
     console.log("✅ Dispositivo administrador registrado:", email);
 
-    res.json({ success: true });
+ const sonidoActual = (await referenciaToken.get()).data().sonido;
+
+res.json({ success: true, sonido: sonidoActual });
 
   } catch (error) {
 
