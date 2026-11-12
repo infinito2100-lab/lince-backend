@@ -9,8 +9,12 @@ app.use(express.json());
 
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+   if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+
   next();
 });
 
@@ -65,6 +69,181 @@ app.post("/save-token", async (req, res) => {
 
 });
 
+// =========================
+// GUARDAR TOKEN DEL ADMINISTRADOR
+// =========================
+
+const administradores = ["catgar7@hotmail.com"];
+
+app.post("/save-admin-token", async (req, res) => {
+
+  try {
+
+    const token = req.body?.token;
+    const autorizacion = req.headers.authorization || "";
+
+    if (!token) {
+      return res.status(400).json({ error: "Falta el token del dispositivo." });
+    }
+
+    if (!autorizacion.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "No autorizado." });
+    }
+
+    const idToken = autorizacion.split("Bearer ")[1];
+    const usuario = await admin.auth().verifyIdToken(idToken);
+
+    const email = (usuario.email || "").toLowerCase();
+
+    if (!administradores.includes(email)) {
+      return res.status(403).json({ error: "No eres administrador." });
+    }
+
+    await db.collection("adminTokens").doc(token).set({
+      token: token,
+      email: email,
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    console.log("✅ Dispositivo administrador registrado:", email);
+
+    res.json({ success: true });
+
+  } catch (error) {
+
+    console.error("❌ Error guardando token admin:", error);
+
+    res.status(500).json({ error: "No se pudo registrar el dispositivo." });
+
+  }
+
+});
+
+
+// =========================
+// NOTIFICAR NUEVO USUARIO AL ADMINISTRADOR
+// =========================
+
+app.post("/notify-new-user", async (req, res) => {
+
+  try {
+
+    const usuarioId = req.body?.usuarioId;
+
+    if (!usuarioId || typeof usuarioId !== "string") {
+      return res.status(400).json({ error: "Falta el ID del usuario." });
+    }
+
+    // Comprobar que el usuario realmente existe en Firestore.
+
+    const usuarioRef = db.collection("usuarios125").doc(usuarioId);
+    const usuarioDoc = await usuarioRef.get();
+
+    if (!usuarioDoc.exists) {
+      return res.status(404).json({ error: "El usuario no existe." });
+    }
+
+    // Evitar notificar dos veces por el mismo registro.
+
+    const avisoRef = db.collection("adminNotifiedUsers").doc(usuarioId);
+    const avisoDoc = await avisoRef.get();
+
+    if (avisoDoc.exists) {
+      return res.json({
+        success: true,
+        message: "Este registro ya fue notificado."
+      });
+    }
+
+    const datosUsuario = usuarioDoc.data();
+
+    const nombre = datosUsuario.nombre || "Nuevo usuario";
+
+    const snapshot = await db.collection("adminTokens").get();
+
+    const tokens = snapshot.docs.map(doc => doc.id);
+
+    if (tokens.length === 0) {
+      return res.status(404).json({
+        error: "No hay dispositivos administradores registrados."
+      });
+    }
+
+    let successCount = 0;
+    let failureCount = 0;
+
+    for (let i = 0; i < tokens.length; i += 500) {
+
+      const grupo = tokens.slice(i, i + 500);
+
+      const mensaje = {
+        data: {
+          title: "🔔 LINCE247",
+          body: "Nuevo usuario registrado: " + nombre,
+          url: "https://lince247.com/admin125.html",
+          tipo: "nuevo_usuario"
+        },
+
+        android: {
+          priority: "high",
+          notification: {
+            sound: "default",
+            channelId: "lince247_alertas",
+            defaultSound: true,
+            defaultVibrateTimings: true
+          }
+        },
+
+        webpush: {
+          headers: {
+            Urgency: "high"
+          }
+        },
+
+        tokens: grupo
+      };
+
+      const respuesta = await admin.messaging()
+        .sendEachForMulticast(mensaje);
+
+      successCount += respuesta.successCount;
+      failureCount += respuesta.failureCount;
+
+    }
+
+    if (successCount > 0) {
+
+      await avisoRef.set({
+        usuarioId: usuarioId,
+        nombre: nombre,
+        fecha: admin.firestore.FieldValue.serverTimestamp(),
+        notificacionesEnviadas: successCount
+      });
+
+    }
+
+    console.log(
+      "🔔 Alerta de nuevo usuario. Enviadas:",
+      successCount,
+      "| Fallidas:",
+      failureCount
+    );
+
+    res.json({
+      success: successCount > 0,
+      enviados: successCount,
+      fallidos: failureCount
+    });
+
+  } catch (error) {
+
+    console.error("❌ Error notificando al administrador:", error);
+
+    res.status(500).json({ error: error.message });
+
+  }
+
+});
 
 // =========================
 // VER TOKENS
@@ -315,11 +494,13 @@ app.get("/", (req, res) => {
 
     message: "Backend Lince247 activo",
 
-    routes: [
-      "/save-token",
-      "/tokens",
-      "/send"
-    ]
+   routes: [
+  "/save-token",
+  "/tokens",
+  "/send",
+  "/save-admin-token",
+  "/notify-new-user"
+]
 
   });
 
