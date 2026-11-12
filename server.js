@@ -99,9 +99,13 @@ app.post("/save-admin-token", async (req, res) => {
       return res.status(403).json({ error: "No eres administrador." });
     }
 
-await db.collection("adminTokens").doc(token).set({
+const referenciaToken = db.collection("adminTokens").doc(token);
+const documentoToken = await referenciaToken.get();
+
+await referenciaToken.set({
   token: token,
   email: email,
+  ...(documentoToken.exists ? {} : { sonido: true }),
   createdAt: admin.firestore.FieldValue.serverTimestamp()
 }, { merge: true });
 
