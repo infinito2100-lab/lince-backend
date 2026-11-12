@@ -99,11 +99,12 @@ app.post("/save-admin-token", async (req, res) => {
       return res.status(403).json({ error: "No eres administrador." });
     }
 
-    await db.collection("adminTokens").doc(token).set({
-      token: token,
-      email: email,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+await db.collection("adminTokens").doc(token).set({
+  token: token,
+  email: email,
+  sonido: true,
+  createdAt: admin.firestore.FieldValue.serverTimestamp()
+}, { merge: true });
 
     console.log("✅ Dispositivo administrador registrado:", email);
 
